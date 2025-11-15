@@ -1,60 +1,94 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
+// themed-text.tsx
+// 
+import { Text, type TextProps } from "react-native";
 
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Typography } from "@/constants/theme";
+import { usePreferences } from "@/hooks/use-preference";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?:
+    | "xlarge"
+    | "large"
+    | "title"
+    | "subtitle"
+    | "body"
+    | "bodySemibold"
+    | "small"
+    | "xsmall"
+    | "caption";
+  variant?: "default" | "secondary" | "link" | "error" | "success" | "warning";
+  propFontScale?: number;
 };
 
 export function ThemedText({
   style,
   lightColor,
   darkColor,
-  type = 'default',
+  type = "body",
+  variant = "default",
+  propFontScale = 1.0,
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const { data: preferences } = usePreferences();
+  const fontScale = preferences?.fontScale ?? 1.0;
+  
+  // Combine both font scales multiplicatively
+  const combinedFontScale = fontScale * propFontScale;
 
-  return (
-    <Text
-      style={[
-        { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
-        style,
-      ]}
-      {...rest}
-    />
-  );
+  // Determine color based on variant
+  let colorKey:
+    | "text"
+    | "textSecondary"
+    | "link"
+    | "error"
+    | "success"
+    | "warning" = "text";
+
+  switch (variant) {
+    case "secondary":
+      colorKey = "textSecondary";
+      break;
+    case "link":
+      colorKey = "link";
+      break;
+    case "error":
+      colorKey = "error";
+      break;
+    case "success":
+      colorKey = "success";
+      break;
+    case "warning":
+      colorKey = "warning";
+      break;
+    default:
+      colorKey = "text";
+  }
+
+  const color = useThemeColor({ light: lightColor, dark: darkColor }, colorKey);
+
+  // Get typography styles and apply font scale
+  const typographyStyle = Typography[type];
+  
+  // Safety check: if typography style doesn't exist, fall back to body
+  if (!typographyStyle) {
+    console.warn(`Typography type "${type}" not found, falling back to "body"`);
+    const bodyStyle = Typography.body;
+    const scaledTypography = {
+      ...bodyStyle,
+      fontSize: bodyStyle.fontSize * combinedFontScale,
+      lineHeight: bodyStyle.lineHeight * combinedFontScale,
+    };
+    return <Text style={[{ color }, scaledTypography, style]} {...rest} />;
+  }
+
+  const scaledTypography = {
+    ...typographyStyle,
+    fontSize: typographyStyle.fontSize * combinedFontScale,
+    lineHeight: typographyStyle.lineHeight * combinedFontScale,
+  };
+
+  return <Text style={[{ color }, scaledTypography, style]} {...rest} />;
 }
-
-const styles = StyleSheet.create({
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 32,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 16,
-    color: '#0a7ea4',
-  },
-});
